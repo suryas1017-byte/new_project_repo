@@ -23,7 +23,7 @@ function generateMachineSeries(machineId, days = 30) {
     const shifts = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6'].map((s, idx) => {
       const good = 34 + ((i + seed + idx * 3) % 27);
       const bad = (i + idx + seed) % 6;
-      return { shift: s, good, bad };
+      return { shift: s, good, bad }; 
     });
 
     series.push({
@@ -43,6 +43,8 @@ function generateMachineSeries(machineId, days = 30) {
 const machineData = {
   'INDU-01': { alarms: 3, series: generateMachineSeries('INDU-01') },
   'INDU-02': { alarms: 5, series: generateMachineSeries('INDU-02') },
+  'INDU-03': { alarms: 8, series: generateMachineSeries('INDU-03') },
+  'INDU-04': { alarms: 2, series: generateMachineSeries('INDU-04') },
 };
 
 function avg(values) {
@@ -54,49 +56,43 @@ export default function DashboardPage() {
   const [selectedMachine, setSelectedMachine] = useState('INDU-01');
   const data = machineData[selectedMachine];
 
-  const defaultFrom = data.series[data.series.length - 5].date;
+  const defaultFrom = data.series[data.series.length - 10].date;
   const defaultTo = data.series[data.series.length - 1].date;
 
   const [fromDate, setFromDate] = useState(defaultFrom);
   const [toDate, setToDate] = useState(defaultTo);
 
-  const selectedSeries = useMemo(() => {
-    const inRange = data.series.filter((row) => row.date >= fromDate && row.date <= toDate);
-    return inRange.length ? inRange : data.series.slice(-5);
-  }, [data.series, fromDate, toDate]);
+  const filteredSeries = useMemo(
+    () => data.series.filter((row) => row.date >= fromDate && row.date <= toDate),
+    [data.series, fromDate, toDate]
+  );
 
-  const productionSeries = useMemo(
+  const safeSeries = filteredSeries.length ? filteredSeries : [data.series[data.series.length - 1]];
+
+  const totalQty = useMemo(
+    () => safeSeries.reduce((sum, value) => sum + value.qty, 0),
+    [safeSeries]
+  );
+  const oeeAvg = useMemo(() => avg(safeSeries.map((row) => row.oee)).toFixed(1), [safeSeries]);
+
+  const runningAvg = useMemo(() => avg(safeSeries.map((row) => row.runningHr)).toFixed(1), [safeSeries]);
+  const idleAvg = useMemo(() => avg(safeSeries.map((row) => row.idleHr)).toFixed(1), [safeSeries]);
+  const stopAvg = useMemo(() => avg(safeSeries.map((row) => row.stopHr)).toFixed(1), [safeSeries]);
+
+  const qtyMax = useMemo(() => Math.max(...safeSeries.map((row) => row.qty)), [safeSeries]);
+  const oeeMax = useMemo(() => Math.max(...safeSeries.map((row) => row.oee)), [safeSeries]);
+
+  const dateWiseBars = useMemo(
     () =>
-      selectedSeries.map((row) => ({
+      safeSeries.slice(-5).map((row) => ({
         label: row.date.slice(5),
-        fullDate: row.date,
         good: Math.round(avg(row.shifts.map((s) => s.good))),
         bad: Math.round(avg(row.shifts.map((s) => s.bad))),
       })),
-    [selectedSeries]
+    [safeSeries]
   );
 
-  const qtySeries = useMemo(() => selectedSeries, [selectedSeries]);
-  const oeeSeries = useMemo(() => selectedSeries, [selectedSeries]);
-  const statusSeries = useMemo(() => selectedSeries, [selectedSeries]);
-
-  const totalQty = useMemo(() => qtySeries.reduce((sum, row) => sum + row.qty, 0), [qtySeries]);
-  const oeeAvg = useMemo(() => avg(oeeSeries.map((row) => row.oee)).toFixed(1), [oeeSeries]);
-
-  const runningAvg = useMemo(() => avg(statusSeries.map((row) => row.runningHr)).toFixed(1), [statusSeries]);
-  const idleAvg = useMemo(() => avg(statusSeries.map((row) => row.idleHr)).toFixed(1), [statusSeries]);
-  const stopAvg = useMemo(() => avg(statusSeries.map((row) => row.stopHr)).toFixed(1), [statusSeries]);
-
-  const qtyMax = useMemo(() => Math.max(...qtySeries.map((row) => row.qty)), [qtySeries]);
-  const oeeMax = useMemo(() => Math.max(...oeeSeries.map((row) => row.oee)), [oeeSeries]);
-
-  const trendMax = useMemo(() => {
-    const maxValue = Math.max(
-      ...productionSeries.map((row) => Math.max(row.good, row.bad)),
-      60
-    );
-    return maxValue;
-  }, [productionSeries]);
+  const shiftScaleMax = 60;
 
   return (
     <section>
@@ -108,10 +104,10 @@ export default function DashboardPage() {
           id="machine-select"
           value={selectedMachine}
           onChange={(e) => {
-            const nextMachine = e.target.value;
-            const nextSeries = machineData[nextMachine].series;
-            setSelectedMachine(nextMachine);
-            setFromDate(nextSeries[nextSeries.length - 5].date);
+            const next = e.target.value;
+            const nextSeries = machineData[next].series;
+            setSelectedMachine(next);
+            setFromDate(nextSeries[nextSeries.length - 10].date);
             setToDate(nextSeries[nextSeries.length - 1].date);
           }}
         >
@@ -144,10 +140,22 @@ export default function DashboardPage() {
       </div>
 
       <div className="kpi-grid">
-        <article className="card"><h3>Selected Machine</h3><p>{selectedMachine}</p></article>
-        <article className="card"><h3>Total Qty (Selected Dates)</h3><p>{totalQty}</p></article>
-        <article className="card"><h3>Active Alarms</h3><p>{data.alarms}</p></article>
-        <article className="card"><h3>OEE Avg (Selected Dates)</h3><p>{oeeAvg}%</p></article>
+        <article className="card">
+          <h3>Selected Machine</h3>
+          <p>{selectedMachine}</p>
+        </article>
+        <article className="card">
+          <h3>Total Qty (Date Range)</h3>
+          <p>{totalQty}</p>
+        </article>
+        <article className="card">
+          <h3>Active Alarms</h3>
+          <p>{data.alarms}</p>
+        </article>
+        <article className="card">
+          <h3>OEE Avg (Date Range)</h3>
+          <p>{oeeAvg}%</p>
+        </article>
       </div>
 
       <div className="chart-card">
@@ -162,20 +170,17 @@ export default function DashboardPage() {
             {[60, 45, 30, 15, 0].map((tick) => (
               <div key={tick} className="shift-hline" />
             ))}
-            <div
-              className="shift-bars-wrap"
-              style={{ gridTemplateColumns: `repeat(${productionSeries.length}, 1fr)` }}
-            >
-              {productionSeries.map((item) => (
-                <div key={item.fullDate} className="shift-col">
+            <div className="shift-bars-wrap">
+              {dateWiseBars.map((item) => (
+                <div key={item.label} className="shift-col">
                   <div className="shift-bar-stack">
                     <span
                       className="shift-bar good"
-                      style={{ height: `${(item.good / trendMax) * 220}px` }}
+                      style={{ height: `${(item.good / shiftScaleMax) * 220}px` }}
                     />
                     <span
                       className="shift-bar bad"
-                      style={{ height: `${(item.bad / trendMax) * 220}px` }}
+                      style={{ height: `${(item.bad / shiftScaleMax) * 220}px` }}
                     />
                   </div>
                   <small>{item.label}</small>
@@ -187,38 +192,52 @@ export default function DashboardPage() {
       </div>
 
       <div className="table-card">
-        <h3>Machine Status Trend (Avg Hours, Selected Dates)</h3>
+        <h3>Machine Status Trend (Avg Hours in Date Range)</h3>
         <div className="trend-grid">
           <div className="trend-item">
             <span>Running Hr</span>
             <strong>{runningAvg}</strong>
-            <div className="trend-bar"><span style={{ width: `${(Number(runningAvg) / 24) * 100}%` }} /></div>
+            <div className="trend-bar">
+              <span style={{ width: `${(Number(runningAvg) / 24) * 100}%` }} />
+            </div>
           </div>
           <div className="trend-item">
             <span>Idle Hr</span>
             <strong>{idleAvg}</strong>
-            <div className="trend-bar"><span style={{ width: `${(Number(idleAvg) / 24) * 100}%` }} /></div>
+            <div className="trend-bar">
+              <span style={{ width: `${(Number(idleAvg) / 24) * 100}%` }} />
+            </div>
           </div>
           <div className="trend-item">
             <span>Stop Hr</span>
             <strong>{stopAvg}</strong>
-            <div className="trend-bar"><span style={{ width: `${(Number(stopAvg) / 24) * 100}%` }} /></div>
+            <div className="trend-bar">
+              <span style={{ width: `${(Number(stopAvg) / 24) * 100}%` }} />
+            </div>
           </div>
         </div>
       </div>
 
       <div className="table-card">
-        <h3>Total Qty Trend (Selected Dates)</h3>
+        <h3>Total Qty Trend (Customized Dates)</h3>
         <table>
           <thead>
-            <tr><th>Date</th><th>Total Qty</th><th>Trend</th></tr>
+            <tr>
+              <th>Date</th>
+              <th>Total Qty</th>
+              <th>Trend</th>
+            </tr>
           </thead>
           <tbody>
-            {qtySeries.map((row) => (
+            {safeSeries.map((row) => (
               <tr key={row.date}>
                 <td>{row.date}</td>
                 <td>{row.qty}</td>
-                <td><div className="trend-bar"><span style={{ width: `${(row.qty / qtyMax) * 100}%` }} /></div></td>
+                <td>
+                  <div className="trend-bar">
+                    <span style={{ width: `${(row.qty / qtyMax) * 100}%` }} />
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -226,17 +245,25 @@ export default function DashboardPage() {
       </div>
 
       <div className="table-card">
-        <h3>OEE Trend (Selected Dates)</h3>
+        <h3>OEE Trend (Customized Dates)</h3>
         <table>
           <thead>
-            <tr><th>Date</th><th>OEE %</th><th>Trend</th></tr>
+            <tr>
+              <th>Date</th>
+              <th>OEE %</th>
+              <th>Trend</th>
+            </tr>
           </thead>
           <tbody>
-            {oeeSeries.map((row) => (
+            {safeSeries.map((row) => (
               <tr key={`oee-${row.date}`}>
                 <td>{row.date}</td>
                 <td>{row.oee}%</td>
-                <td><div className="trend-bar"><span style={{ width: `${(row.oee / oeeMax) * 100}%` }} /></div></td>
+                <td>
+                  <div className="trend-bar">
+                    <span style={{ width: `${(row.oee / oeeMax) * 100}%` }} />
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -245,6 +272,3 @@ export default function DashboardPage() {
     </section>
   );
 }
-
-
-

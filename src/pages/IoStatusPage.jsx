@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 
-const machineList = ['INDU-01', 'INDU-02'];
+const machineList = ['INDUCITON -01', 'INDUCTION-02'];
 
 const inputTags = [
   'AIR PRESSURE',
@@ -82,7 +82,7 @@ function makeRows(tags, prefix, startByte, machine) {
 }
 
 export default function IoStatusPage() {
-  const [selectedMachine, setSelectedMachine] = useState('INDU-01');
+  const [selectedMachine, setSelectedMachine] = useState('INDUCITON -01');
   const [type, setType] = useState('inputs');
 
   const inputRows = useMemo(
@@ -161,4 +161,5 @@ export default function IoStatusPage() {
     </section>
   );
 }
+
 

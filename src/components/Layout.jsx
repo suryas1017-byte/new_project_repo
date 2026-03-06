@@ -4,11 +4,15 @@ const navItems = [
   { to: '/dashboard', label: 'Dashboard' },
   { to: '/validation', label: 'Validation' },
   { to: '/shift-report', label: 'Shift Report' },
-  { to: '/run-status', label: 'Run Status' },
   { to: '/heat-program', label: 'Heat Program' },
   { to: '/io-status', label: 'I/O Status' },
   { to: '/alarms', label: 'Alarms & History' },
 ];
+
+function formatPageTitle(pathname) {
+  const page = pathname.replace('/', '').replace(/-/g, ' ').trim();
+  return page ? page.toUpperCase() : 'DASHBOARD';
+}
 
 export default function Layout() {
   const location = useLocation();
@@ -34,9 +38,7 @@ export default function Layout() {
       </aside>
       <main className="content">
         <header className="topbar">
-          <span>Line: INDU-01</span>
-          <span>{location.pathname.replace('/', '').toUpperCase() || 'DASHBOARD'}</span>
-          <span>Shift: A</span>
+          <span className="topbar-title">{formatPageTitle(location.pathname)}</span>
         </header>
         <Outlet />
       </main>
