@@ -6,7 +6,7 @@ const navItems = [
   { to: '/shift-report', label: 'Shift Report' },
   { to: '/heat-program', label: 'Heat Program' },
   { to: '/io-status', label: 'I/O Status' },
-  { to: '/alarms', label: 'Alarms & History' },
+  { to: '/alarms', label: 'Alarm' },
 ];
 
 function formatPageTitle(pathname) {

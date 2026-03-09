@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useAlarms } from '../context/AlarmContext';
 
 function iso(date) {
   return date.toISOString().slice(0, 10);
@@ -23,7 +24,7 @@ function generateMachineSeries(machineId, days = 30) {
     const shifts = ['S1', 'S2', 'S3', 'S4', 'S5', 'S6'].map((s, idx) => {
       const good = 34 + ((i + seed + idx * 3) % 27);
       const bad = (i + idx + seed) % 6;
-      return { shift: s, good, bad }; 
+      return { shift: s, good, bad };
     });
 
     series.push({
@@ -54,6 +55,8 @@ function avg(values) {
 
 export default function DashboardPage() {
   const [selectedMachine, setSelectedMachine] = useState('INDU-01');
+  const [showAlarmNotifications, setShowAlarmNotifications] = useState(false);
+  const { activeAlarms, selectedActiveAlarms, clearAlarm } = useAlarms();
   const data = machineData[selectedMachine];
 
   const defaultFrom = data.series[data.series.length - 10].date;
@@ -73,30 +76,49 @@ export default function DashboardPage() {
     () => safeSeries.reduce((sum, value) => sum + value.qty, 0),
     [safeSeries]
   );
-  const oeeAvg = useMemo(() => avg(safeSeries.map((row) => row.oee)).toFixed(1), [safeSeries]);
 
   const runningAvg = useMemo(() => avg(safeSeries.map((row) => row.runningHr)).toFixed(1), [safeSeries]);
   const idleAvg = useMemo(() => avg(safeSeries.map((row) => row.idleHr)).toFixed(1), [safeSeries]);
   const stopAvg = useMemo(() => avg(safeSeries.map((row) => row.stopHr)).toFixed(1), [safeSeries]);
 
-  const qtyMax = useMemo(() => Math.max(...safeSeries.map((row) => row.qty)), [safeSeries]);
-  const oeeMax = useMemo(() => Math.max(...safeSeries.map((row) => row.oee)), [safeSeries]);
-
-  const dateWiseBars = useMemo(
+  const productionTrendBars = useMemo(
     () =>
-      safeSeries.slice(-5).map((row) => ({
-        label: row.date.slice(5),
-        good: Math.round(avg(row.shifts.map((s) => s.good))),
-        bad: Math.round(avg(row.shifts.map((s) => s.bad))),
-      })),
+      safeSeries.map((row) => {
+        const reject = Math.max(1, Math.round(row.qty * 0.03));
+        const good = row.qty - reject;
+        return { label: row.date.slice(5), good, reject };
+      }),
     [safeSeries]
   );
 
-  const shiftScaleMax = 60;
+  const productionScaleMax = useMemo(() => {
+    const maxGood = Math.max(...productionTrendBars.map((row) => row.good), 2000);
+    return Math.ceil(maxGood / 500) * 500;
+  }, [productionTrendBars]);
+
+  const productionTicks = useMemo(
+    () => [productionScaleMax, Math.round(productionScaleMax * 0.75), Math.round(productionScaleMax * 0.5), Math.round(productionScaleMax * 0.25), 0],
+    [productionScaleMax]
+  );
 
   return (
-    <section>
-      <h2>Plant Overview</h2>
+    <section className="dashboard-page">
+      <div className="dashboard-header-row">
+        <h2>Plant Overview</h2>
+        <button
+          type="button"
+          className="alarm-icon-btn"
+          onClick={() => setShowAlarmNotifications((prev) => !prev)}
+          aria-label="Toggle alarm notifications"
+        >
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <path d="M12 2a6 6 0 0 0-6 6v3.3l-1.5 3.2a1 1 0 0 0 .9 1.5h13.2a1 1 0 0 0 .9-1.5L18 11.3V8a6 6 0 0 0-6-6Zm0 20a3 3 0 0 0 2.8-2h-5.6a3 3 0 0 0 2.8 2Z" />
+          </svg>
+          {selectedActiveAlarms.length > 0 && (
+            <span className="alarm-icon-badge">{selectedActiveAlarms.length}</span>
+          )}
+        </button>
+      </div>
 
       <div className="actions-row">
         <label htmlFor="machine-select">Machine</label>
@@ -150,49 +172,40 @@ export default function DashboardPage() {
         </article>
         <article className="card">
           <h3>Active Alarms</h3>
-          <p>{data.alarms}</p>
-        </article>
-        <article className="card">
-          <h3>OEE Avg (Date Range)</h3>
-          <p>{oeeAvg}%</p>
+          <p>{activeAlarms.length}</p>
         </article>
       </div>
 
-      <div className="chart-card">
-        <h3>PRODUCTION DATE WISE</h3>
-        <div className="shift-chart-shell">
-          <div className="shift-axis">
-            {[60, 45, 30, 15, 0].map((tick) => (
-              <span key={tick}>{tick}</span>
-            ))}
-          </div>
-          <div className="shift-plot">
-            {[60, 45, 30, 15, 0].map((tick) => (
-              <div key={tick} className="shift-hline" />
-            ))}
-            <div className="shift-bars-wrap">
-              {dateWiseBars.map((item) => (
-                <div key={item.label} className="shift-col">
-                  <div className="shift-bar-stack">
-                    <span
-                      className="shift-bar good"
-                      style={{ height: `${(item.good / shiftScaleMax) * 220}px` }}
-                    />
-                    <span
-                      className="shift-bar bad"
-                      style={{ height: `${(item.bad / shiftScaleMax) * 220}px` }}
-                    />
+
+      {showAlarmNotifications && (
+        <div className="table-card alarm-notification-card">
+          <h3>Active Alarm Notifications</h3>
+          {selectedActiveAlarms.length === 0 ? (
+            <p className="alarm-empty">No selected critical alarms.</p>
+          ) : (
+            <div className="alarm-notify-list">
+              {selectedActiveAlarms.map((alarm) => (
+                <div key={alarm.id} className="alarm-notify-item">
+                  <div>
+                    <strong>{alarm.id}</strong>
+                    <p>{alarm.alarm}</p>
                   </div>
-                  <small>{item.label}</small>
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => clearAlarm(alarm.id)}
+                  >
+                    Clear
+                  </button>
                 </div>
               ))}
             </div>
-          </div>
+          )}
         </div>
-      </div>
+      )}
 
       <div className="table-card">
-        <h3>Machine Status Trend (Avg Hours in Date Range)</h3>
+        <h3>Machine Running Report</h3>
         <div className="trend-grid">
           <div className="trend-item">
             <span>Running Hr</span>
@@ -218,57 +231,49 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="table-card">
-        <h3>Total Qty Trend (Customized Dates)</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>Total Qty</th>
-              <th>Trend</th>
-            </tr>
-          </thead>
-          <tbody>
-            {safeSeries.map((row) => (
-              <tr key={row.date}>
-                <td>{row.date}</td>
-                <td>{row.qty}</td>
-                <td>
-                  <div className="trend-bar">
-                    <span style={{ width: `${(row.qty / qtyMax) * 100}%` }} />
-                  </div>
-                </td>
-              </tr>
+      <div className="chart-card">
+        <h3>PRODUCTION REPORT</h3>
+        <div className="shift-chart-shell">
+          <div className="shift-axis">
+            {productionTicks.map((tick) => (
+              <span key={tick}>{tick}</span>
             ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="table-card">
-        <h3>OEE Trend (Customized Dates)</h3>
-        <table>
-          <thead>
-            <tr>
-              <th>Date</th>
-              <th>OEE %</th>
-              <th>Trend</th>
-            </tr>
-          </thead>
-          <tbody>
-            {safeSeries.map((row) => (
-              <tr key={`oee-${row.date}`}>
-                <td>{row.date}</td>
-                <td>{row.oee}%</td>
-                <td>
-                  <div className="trend-bar">
-                    <span style={{ width: `${(row.oee / oeeMax) * 100}%` }} />
-                  </div>
-                </td>
-              </tr>
+          </div>
+          <div className="shift-plot">
+            {productionTicks.map((tick) => (
+              <div key={tick} className="shift-hline" />
             ))}
-          </tbody>
-        </table>
+            <div
+              className="shift-bars-wrap"
+              style={{ gridTemplateColumns: `repeat(${productionTrendBars.length || 1}, 1fr)` }}
+            >
+              {productionTrendBars.map((item) => (
+                <div key={item.label} className="shift-col">
+                  <div className="shift-bar-stack">
+                    <span
+                      className="shift-bar good"
+                      style={{ height: `${(item.good / productionScaleMax) * 220}px` }}
+                    />
+                    <span
+                      className="shift-bar bad"
+                      style={{ height: `${(item.reject / productionScaleMax) * 220}px` }}
+                    />
+                  </div>
+                  <small>{item.label}</small>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     </section>
   );
 }
+
+
+
+
+
+
+
+

@@ -12,7 +12,7 @@ const initialParameters = [
 ];
 
 const machineRuntimeData = {
-  'INDUCITON -01': {
+  'INDUCTION -01': {
     params: [
       ['Power (kW)', '67.0'],
       ['Energy (kWs)', '1420.5'],
@@ -41,9 +41,9 @@ const machineRuntimeData = {
 };
 
 export default function ValidationPage() {
-  const [selectedMachine, setSelectedMachine] = useState('INDUCITON -01');
+  const [selectedMachine, setSelectedMachine] = useState('INDUCTION -01');
   const [parameters, setParameters] = useState(initialParameters);
-  const runtime = machineRuntimeData[selectedMachine];
+  const runtime = machineRuntimeData[selectedMachine] ?? { params: [] };
 
   function updateValue(index, field, value) {
     setParameters((prev) =>
@@ -135,4 +135,5 @@ export default function ValidationPage() {
     </section>
   );
 }
+
 

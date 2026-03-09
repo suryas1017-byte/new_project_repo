@@ -1,25 +1,57 @@
-const alarms = [
-  ['A-101', 'High Cycle Time', 'Medium', '10:25'],
-  ['A-077', 'Cooling Delay', 'High', '10:13'],
-  ['A-049', 'Door Open Timeout', 'Low', '09:58'],
-];
+import { useState } from 'react';
+import { useAlarms } from '../context/AlarmContext';
 
 export default function AlarmsPage() {
+  const { activeAlarms, historyAlarms, toggleCritical } = useAlarms();
+  const [viewMode, setViewMode] = useState('active');
+
+  const rows = viewMode === 'active' ? activeAlarms : historyAlarms;
+
   return (
     <section>
-      <h2>Alarms & History</h2>
-      <div className="kpi-grid">
-        <article className="card"><h3>Active Alarms</h3><p>3</p></article>
-        <article className="card"><h3>Critical</h3><p>0</p></article>
-        <article className="card"><h3>MTTR</h3><p>08:12</p></article>
-        <article className="card"><h3>Today Total</h3><p>19</p></article>
+      <h2>Alarm</h2>
+
+      <div className="actions-row">
+        <button
+          type="button"
+          className={viewMode === 'active' ? '' : 'secondary'}
+          onClick={() => setViewMode('active')}
+        >
+          Alarm Config
+        </button>
+        <button
+          type="button"
+          className={viewMode === 'history' ? '' : 'secondary'}
+          onClick={() => setViewMode('history')}
+        >
+          History
+        </button>
       </div>
+
       <div className="table-card">
         <table>
-          <thead><tr><th>ID</th><th>Alarm</th><th>Severity</th><th>Time</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Critical</th>
+              <th>ID</th>
+              <th>Alarm</th>
+            </tr>
+          </thead>
           <tbody>
-            {alarms.map((a) => (
-              <tr key={a[0]}><td>{a[0]}</td><td>{a[1]}</td><td>{a[2]}</td><td>{a[3]}</td></tr>
+            {rows.map((a) => (
+              <tr key={a.id}>
+                <td>
+                  <input
+                    type="checkbox"
+                    checked={a.critical}
+                    onChange={() => toggleCritical(a.id)}
+                    aria-label={`Mark ${a.id} as critical`}
+                    disabled={viewMode === 'history'}
+                  />
+                </td>
+                <td>{a.id}</td>
+                <td>{a.alarm}</td>
+              </tr>
             ))}
           </tbody>
         </table>
@@ -27,3 +59,4 @@ export default function AlarmsPage() {
     </section>
   );
 }
+

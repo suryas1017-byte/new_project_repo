@@ -17,11 +17,11 @@ const dbLogRows = {
   ],
   day: [
     {
-      key: 'D-1', timestamp: '2026-03-05 07:00:00', machine: 'INDUCITON -01', batchNo: 'B-240401', programNo: 'PRG-201', shift: 'A',
+      key: 'D-1', timestamp: '2026-03-05 07:00:00', machine: 'INDUCTION -01', batchNo: 'B-240401', programNo: 'PRG-201', shift: 'A',
       energy: 1421.4, soakTime: 8.6, heatTime2: 11.7, quenchTime: 7.2, quenchFlow: 163, quenchTemp: 29.7, heatTime1: 12.2, cycleTime: 45.3,
     },
     {
-      key: 'D-2', timestamp: '2026-03-05 13:00:00', machine: 'INDUCITON -01', batchNo: 'B-240402', programNo: 'PRG-201', shift: 'B',
+      key: 'D-2', timestamp: '2026-03-05 13:00:00', machine: 'INDUCTION -01', batchNo: 'B-240402', programNo: 'PRG-201', shift: 'B',
       energy: 1419.1, soakTime: 8.3, heatTime2: 11.8, quenchTime: 7.1, quenchFlow: 161, quenchTemp: 29.5, heatTime1: 12.1, cycleTime: 45.4,
     },
     {
@@ -31,11 +31,11 @@ const dbLogRows = {
   ],
   month: [
     {
-      key: 'M-1', timestamp: '2026-03-01 00:00:00', machine: 'INDUCITON -01', batchNo: 'M-2403-W1', programNo: 'PRG-301', shift: 'A',
+      key: 'M-1', timestamp: '2026-03-01 00:00:00', machine: 'INDUCTION -01', batchNo: 'M-2403-W1', programNo: 'PRG-301', shift: 'A',
       energy: 1416.8, soakTime: 8.5, heatTime2: 11.9, quenchTime: 7.2, quenchFlow: 160, quenchTemp: 29.8, heatTime1: 12.2, cycleTime: 45.5,
     },
     {
-      key: 'M-2', timestamp: '2026-03-08 00:00:00', machine: 'INDUCITON -01', batchNo: 'M-2403-W2', programNo: 'PRG-301', shift: 'B',
+      key: 'M-2', timestamp: '2026-03-08 00:00:00', machine: 'INDUCTION -01', batchNo: 'M-2403-W2', programNo: 'PRG-301', shift: 'B',
       energy: 1419.4, soakTime: 8.4, heatTime2: 11.8, quenchTime: 7.1, quenchFlow: 161, quenchTemp: 29.6, heatTime1: 12.3, cycleTime: 45.2,
     },
     {
@@ -47,7 +47,7 @@ const dbLogRows = {
 
 export default function ShiftReportPage() {
   const [reportType, setReportType] = useState('shift');
-  const [machine, setMachine] = useState('INDUCITON -01');
+  const [machine, setMachine] = useState('INDUCTION -01');
 
   const logRows = useMemo(
     () => dbLogRows[reportType].filter((r) => r.machine === machine),
@@ -70,7 +70,7 @@ export default function ShiftReportPage() {
         </select>
 
         <select value={machine} onChange={(e) => setMachine(e.target.value)}>
-          <option value="INDUCITON -01">Machine: INDUCITON -01</option>
+          <option value="INDUCTION -01">Machine: INDUCTION -01</option>
           <option value="INDUCTION-02">Machine: INDUCTION-02</option>
         </select>
 
@@ -85,7 +85,7 @@ export default function ShiftReportPage() {
       </div>
 
       <div className="table-card shift-table-card">
-        <h3>Database Parameter Log</h3>
+        <h3>Parameter Log</h3>
         <table>
           <thead>
             <tr>
